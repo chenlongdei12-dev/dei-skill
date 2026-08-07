@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Content experiment",
+  "type": "object",
+  "required": ["hypothesis_id", "statement", "primary_metric", "metric_window", "control", "variant", "status", "next_action"],
+  "properties": {
+    "hypothesis_id": {"type": "string"},
+    "statement": {"type": "string"},
+    "primary_metric": {"type": "string"},
+    "metric_window": {"enum": ["24h", "72h", "7d", "30d", "cumulative"]},
+    "control": {"type": "array"},
+    "variant": {"type": "array"},
+    "controlled_dimensions": {"type": "array", "items": {"type": "string"}},
+    "status": {"enum": ["proposed", "testing", "supported", "rejected", "inconclusive", "fatigued"]},
+    "sample_size": {"type": "integer", "minimum": 0},
+    "result": {},
+    "next_action": {"type": "string"}
+  }
+}
