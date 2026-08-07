@@ -1,0 +1,4 @@
+interface:
+  display_name: "抖音内容决策与作战系统"
+  short_description: "用证据账本、时间回测和跨渠道弱信号持续优化抖音内容决策"
+  default_prompt: "Use $douyin-content-battle-plan to audit my Douyin data, diagnose content patterns, backtest relative forecasts, and create the next traceable experiment plan."

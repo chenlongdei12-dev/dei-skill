@@ -1,0 +1,14 @@
+{
+  "plan_id": "PLAN-YYYYMMDD",
+  "intent": "PLAN",
+  "cadence": "WEEKLY",
+  "data_snapshot_id": "",
+  "business_goal": "",
+  "primary_metric": "",
+  "metric_window": "7d",
+  "hypotheses": [],
+  "formulas": [],
+  "publishing_schedule": [],
+  "review_at": "",
+  "required_backfill_fields": []
+}

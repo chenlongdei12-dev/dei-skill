@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Relative content forecast",
+  "type": "object",
+  "required": ["forecast_id", "candidate_id", "target", "metric", "metric_window", "probability_above_baseline", "confidence", "status"],
+  "properties": {
+    "forecast_id": {"type": "string"},
+    "candidate_id": {"type": "string"},
+    "target": {"type": "string"},
+    "metric": {"type": "string"},
+    "metric_window": {"enum": ["24h", "72h", "7d", "30d", "cumulative"]},
+    "baseline_value": {"type": ["number", "null"]},
+    "probability_above_baseline": {"type": "number", "minimum": 0, "maximum": 1},
+    "confidence": {"enum": ["low", "medium", "high"]},
+    "category_support_floor": {"type": "integer", "minimum": 0},
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "status": {"enum": ["pending", "resolved", "cancelled"]}
+  }
+}

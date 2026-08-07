@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cross-channel weak signal",
+  "type": "object",
+  "required": ["content_id", "channel", "published_at", "topic"],
+  "properties": {
+    "content_id": {"type": "string"},
+    "channel": {"type": "string"},
+    "published_at": {"type": "string"},
+    "topic": {"type": "string"},
+    "content_world": {"type": "string"},
+    "primary_task": {"type": "string"},
+    "likes": {"type": "number", "minimum": 0},
+    "comments": {"type": "number", "minimum": 0},
+    "private_messages": {"type": "number", "minimum": 0},
+    "experience_replies": {"type": "number", "minimum": 0},
+    "business_inquiries": {"type": "number", "minimum": 0},
+    "source_path": {"type": "string"}
+  }
+}
