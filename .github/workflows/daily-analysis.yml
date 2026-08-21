@@ -1,0 +1,92 @@
+name: Daily AI Analysis
+
+on:
+  schedule:
+    # 北京时间每天 22:20（UTC 14:20），抓取完成后约 40 分钟
+    - cron: "20 14 * * *"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "分析日期 YYYYMMDD（可选，默认最新一期）"
+        required: false
+        default: ""
+      force:
+        description: "已生成时是否重新生成 (true/false)"
+        required: false
+        default: "false"
+      backfill:
+        description: "回填最近 N 天缺失报告 (0=关闭)"
+        required: false
+        default: "0"
+  workflow_run:
+    # 抓取 workflow 成功后自动触发本分析
+    workflows: ["Fetch Xinwenlianbo Transcripts"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: analyze-xwlb
+  cancel-in-progress: false
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # workflow_run 触发时只在抓取成功时执行；无 Key 时脚本自身 exit 0
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Skip notice when no API key
+        run: |
+          if [ -z "${{ secrets.LLM_API_KEY }}" ]; then
+            echo "LLM_API_KEY secret 未配置。"
+            echo "AI 分析已配置好，等你把 Key 填入仓库 Secrets 后自动启用。"
+            echo "配置路径：Settings → Secrets and variables → Actions → New repository secret"
+            echo "需要设置三个：LLM_API_KEY（必填）、LLM_BASE_URL、LLM_MODEL（可选）"
+          fi
+
+      - name: Run analysis
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          NEWS_ANALYSIS_ROOT: ${{ github.workspace }}/新闻联播分析数据
+        run: |
+          EXTRA=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -n "${{ github.event.inputs.backfill }}" ] && [ "${{ github.event.inputs.backfill }}" != "0" ]; then
+              EXTRA="--backfill ${{ github.event.inputs.backfill }}"
+            elif [ -n "${{ github.event.inputs.date }}" ]; then
+              EXTRA="--date ${{ github.event.inputs.date }}"
+              if [ "${{ github.event.inputs.force }}" = "true" ]; then
+                D="${{ github.event.inputs.date }}"
+                rm -f "$NEWS_ANALYSIS_ROOT/每日分析报告/${D:0:4}/${D:4:2}/${D:6:2}_分析报告.md" 2>/dev/null
+                rm -f "$NEWS_ANALYSIS_ROOT/每日分析报告/${D:0:4}/${D:4:2}/${D:0:4}-${D:4:2}-${D:6:2}_分析报告.md"
+              fi
+            fi
+          fi
+          python 新闻联播分析/scripts/analyze_daily.py $EXTRA
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 新闻联播分析数据/每日分析报告/
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+          else
+            git commit -m "chore(data): 生成每日分析报告 $(date -u +%Y-%m-%d)"
+            git push
+          fi
+        # 无 Key 时上一步 exit 0，这一步仍会执行但无报告可提交
+        if: always()

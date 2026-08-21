@@ -1,0 +1,75 @@
+name: Fetch Xinwenlianbo Transcripts
+
+on:
+  schedule:
+    # 北京时间每天 21:40 / 09:40（UTC 13:40 / 01:40）抓取最新一期
+    - cron: "40 13 * * *"
+    - cron: "40 1 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "回填天数（默认 1，仅增量抓最新）"
+        required: false
+        default: "1"
+      date:
+        description: "指定日期 YYYYMMDD（可选，优先于 days）"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-xwlb
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install -r 新闻联播分析/requirements.txt
+
+      - name: Fetch transcripts
+        env:
+          NEWS_ANALYSIS_ROOT: ${{ github.workspace }}/新闻联播分析数据
+        run: |
+          ARGS="--root $NEWS_ANALYSIS_ROOT --incremental"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -n "${{ github.event.inputs.date }}" ]; then
+              ARGS="--root $NEWS_ANALYSIS_ROOT --date ${{ github.event.inputs.date }}"
+            elif [ "${{ github.event.inputs.days }}" != "1" ]; then
+              ARGS="--root $NEWS_ANALYSIS_ROOT --days ${{ github.event.inputs.days }}"
+            fi
+          elif [ ! -d "$NEWS_ANALYSIS_ROOT/新闻联播原文" ] || [ -z "$(find "$NEWS_ANALYSIS_ROOT/新闻联播原文" -name '*.md' -print -quit 2>/dev/null)" ]; then
+            echo "首次运行：回填最近 30 天逐字稿"
+            ARGS="--root $NEWS_ANALYSIS_ROOT --days 30"
+          fi
+          echo "Running: python scripts/fetch_xwlb.py $ARGS"
+          python 新闻联播分析/scripts/fetch_xwlb.py $ARGS
+
+      - name: Rebuild month indexes
+        env:
+          NEWS_ANALYSIS_ROOT: ${{ github.workspace }}/新闻联播分析数据
+        run: python 新闻联播分析/scripts/rebuild_month_indexes.py --root $NEWS_ANALYSIS_ROOT
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 新闻联播分析数据/
+          if git diff --cached --quiet; then
+            echo "No new transcripts, skip commit."
+          else
+            git commit -m "chore(data): 抓取新闻联播逐字稿 $(date -u +%Y-%m-%d)"
+            git push
+          fi
