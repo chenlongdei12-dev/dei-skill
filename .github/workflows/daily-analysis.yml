@@ -79,14 +79,19 @@ jobs:
 
       - name: Commit and push
         run: |
+          if [ -d "新闻联播分析数据/每日分析报告" ]; then
+            git add 新闻联播分析数据/每日分析报告/
+          else
+            echo "无报告目录，跳过提交。"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add 新闻联播分析数据/每日分析报告/
           if git diff --cached --quiet; then
             echo "Nothing to commit."
           else
             git commit -m "chore(data): 生成每日分析报告 $(date -u +%Y-%m-%d)"
             git push
           fi
-        # 无 Key 时上一步 exit 0，这一步仍会执行但无报告可提交
+        # 无 Key 时脚本 exit 0 但无报告生成，此步必须容忍空目录
         if: always()
